@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+<div style="width: 600px;height: 600px;float:right;">
+    <div style="width: 600px;border: 1px solid gray;height: 500px;">
+        <div style="width: 130px;height: 500px;float: right;overflow: scroll;text-align: left;">
+            <p><span>当前在线:</span><span id="user_num">0</span></p>
+            <div id="user_list" style="overflow: auto;">
+
+            </div>
+        </div>
+        <div id="message_list" style="width: 460px;border:  1px solid gray; height: 500px;overflow: scroll;float: left;">
+        </div>
+    </div>
+    <br>
+    <textarea id="message_box" rows="6" cols="71" onkeydown="confirm(event)"></textarea><br>
+    <input type="button" value="发送" onclick="send()">
+</div>
+</body>
+</html>
+
+<script type="text/javascript">
+    var uname = prompt('请输入用户名');
+    var ws = new WebSocket("ws://8.129.5.236:4000/chat");
+    ws.onopen = function () {
+        
+    };
+
+    ws.onmessage = function (e) {
+        var message = JSON.parse(e.data);
+        var sender, user_name, name_list, change_type;
+
+        switch (message.type) {
+            case 'system':
+                sender = '系统消息: ';
+                break;
+            case 'user':
+                sender = message.from + ': ';
+                break;
+            case 'handshake':
+                var user_info = {'type': 'login', 'content': uname};
+                sendMsg(user_info);
+                return;
+            case 'login':
+            case 'disconnect':
+                user_name = message.content;
+                name_list = message.user_list;
+                change_type = message.type;
+                dealUser(user_name, change_type, name_list);
+                return;
+        }
+
+        var data = sender + message.content;
+        listMsg(data);
+    };
+
+    ws.onerror = function () {
+        
+    };
+
+    function confirm(event) {
+        var key_num = event.keyCode;
+        if (13 == key_num) {
+            send();
+        } else {
+            return false;
+        }
+    }
+
+    function send() {
+        var message_box = document.getElementById("message_box");
+        var content = message_box.value;
+        var reg = new RegExp("\r\n", "g");
+        content = content.replace(reg, "");
+        var message = {'content': content.trim(), 'type': 'user'};
+        sendMsg(message);
+        message_box.value = '';
+    
+    }
+
+
+    function listMsg(data) {
+        var message_list = document.getElementById("message_list");
+        var message = document.createElement("p");
+
+        message.innerHTML = data;
+        message_list.appendChild(message);
+        message_list.scrollTop = message_list.scrollHeight;
+    }
+
+    function dealUser(user_name, type, name_list) {
+        var user_list = document.getElementById("user_list");
+        var user_num = document.getElementById("user_num");
+        while(user_list.hasChildNodes()) {
+            user_list.removeChild(user_list.firstChild);
+        }
+
+        for (var index in name_list) {
+            var user = document.createElement("p");
+            user.innerHTML = name_list[index];
+            user_list.appendChild(user);
+        }
+        user_num.innerHTML = name_list.length;
+        user_list.scrollTop = user_list.scrollHeight;
+
+      
+    }
+
+    function sendMsg(message) {
+        var data = JSON.stringify(message);
+        ws.send(data);
+    }
+    
+</script>
